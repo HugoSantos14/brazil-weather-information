@@ -1,0 +1,16 @@
+{
+  "extends": [],
+  "rules": {
+    "type-enum": [2, "always", [
+      "feature",
+      "bugfix",
+      "hotfix",
+      "release"
+    ]],
+    "jira-ticket-required": [2, "always", true],
+    "description-required": [2, "always", true],
+    "release-semver": [2, "always", true],
+    "branch-max-length": [2, "always", 72],
+    "branch-case": [2, "always", "kebab-case"]
+  }
+}
