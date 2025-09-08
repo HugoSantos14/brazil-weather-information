@@ -1,0 +1,154 @@
+name: CI-CD
+
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  Project-Lapes-ML:
+    name: Check Commit Message
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+
+    steps:
+      # Starting tests for the branch and commits messages!
+      - name: Validate Branch Name
+        id: validate-branch-name
+        uses: deepakputhraya/action-branch-name@master
+        with:
+          config_file: .github/config/branchlint_config.json
+          failOnWarnings: false
+
+      - name: Comment on Branch Name Failure
+        id: comment-on-branch-name-failure
+        if: steps.validate-branch-name.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### ❌ Invalid Branch Name
+            Your branch name (`${{ github.head_ref }}`) does not follow the project's standards.
+            Please check our contribution guidelines and rename the branch.
+
+      - name: Validate Commit Message
+        id: validate-commit-message
+        uses: deepakputhraya/action-commit-message@master
+        with:
+          config_file: .github/config/commitlint_config.json
+          failOnWarnings: false
+
+      - name: Comment on Commit Message Failure
+        id: comment-on-branch-name-failure
+        if: steps.validate-commit-message.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+           ### ❌ Invalid Commit Message
+            One or more of your commit messages do not follow the project's standards.
+            Please check our contribution guidelines and amend your commit messages.
+
+      # Starting the configuration of the test for code!
+      - name: Checkout of the Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.13'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Test Dependencies
+        run: |
+          pip install pytest
+          pip install pytest-cov
+          pip install flake8
+          pip install black
+
+      - name: Lint and Format Check
+        run: |
+          flake8 .
+          black . --check
+
+      - name: Test with pytest
+        run: |
+          pytest --cov=./ --cov-report=xml
+
+      - name: Coverage Report
+        run: |
+          coverage report
+
+      - name: Upload Coverage Report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+      # Your code is good to go!
+      - name: Create Pull Request automatically
+        if: steps.validate.outputs.valid == 'true' && github.event_name == 'push'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const base = 'main';
+            const head = '${{ steps.extract.outputs.branch }}';
+              
+            let title = head.replace(/-/g, ' ').replace(/\//g, ': ');
+            title = title.charAt(0).toUpperCase() + title.slice(1);
+            const body = `## Description\n\nThis PR includes changes from the \`${head}\` branch.\n\n---\n_PR created automatically by CI._`;
+              
+            const existing = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${head}`,
+              state: 'open'
+            });
+              
+            if (existing.data.length > 0) {
+              console.log('An open PR for this branch already exists.');
+              return;
+            }
+              
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              head,
+              base,
+              body
+            });
+            
+            const labels = ['feature'];
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels
+            });
+
+      - name: Notify success
+        if: success()
+        run: echo "Pipeline concluída com sucesso!"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "Pipeline falhou. Verifique os logs."
+          exit 1
