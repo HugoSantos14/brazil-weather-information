@@ -1,4 +1,5 @@
 import os
+import shutil
 import pandas as pd
 import kagglehub
 
@@ -36,13 +37,13 @@ def main():
     if not os.path.exists(BRONZE_FILE):
         print("[INFO] File not found in data/bronze. Starting ingestion...")
         src_file = download_from_kaggle()
-        os.system(f"cp '{src_file}' '{BRONZE_FILE}'")
+        shutil.copy(src_file, BRONZE_FILE)
         print(f"[INFO] Ingestion complete! File saved to {BRONZE_FILE}.")
     else:
         print("[INFO] File already exists in data. Skipping download.")
 
     df = pd.read_csv(BRONZE_FILE)
-    print(df.head())
+    print(df.info())
 
 if __name__ == "__main__":
     main()
