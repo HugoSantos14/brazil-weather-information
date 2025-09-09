@@ -32,7 +32,7 @@ jobs:
           failOnWarnings: false
 
       - name: Comment on Branch Name Failure
-        id: comment-on-branch-name-failure
+        id: comment-branch
         if: steps.validate-branch-name.outcome == 'failure' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
@@ -50,7 +50,7 @@ jobs:
           failOnWarnings: false
 
       - name: Comment on Commit Message Failure
-        id: comment-on-branch-name-failure
+        id: comment-commit
         if: steps.validate-commit-message.outcome == 'failure' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
