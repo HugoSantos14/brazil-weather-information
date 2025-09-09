@@ -44,7 +44,7 @@ jobs:
 
       - name: Validate Commit Message
         id: validate-commit-message
-        uses: deepakputhraya/action-commit-message@master
+        uses: wagoid/commitlint-github-action@v5
         with:
           config_file: .github/config/commitlint_config.json
           failOnWarnings: false
