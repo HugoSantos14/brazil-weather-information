@@ -1,25 +1,11 @@
 import os
-import shutil
 import pandas as pd
+from pathlib import Path
 import kagglehub
+import shutil
 
-# Dataset do Kaggle
 KAGGLE_DATASET = "gregoryoliveira/brazil-weather-information-by-inmet"
 KAGGLE_FILE = "weather_sum_all.csv"
-
-# Diretório base (raiz do projeto)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Diretórios do pipeline
-DATA_DIR = os.path.join(BASE_DIR, "data")
-BRONZE_DIR = os.path.join(DATA_DIR, "bronze")
-SILVER_DIR = os.path.join(DATA_DIR, "silver")
-GOLD_DIR = os.path.join(DATA_DIR, "gold")
-BRONZE_FILE = os.path.join(BRONZE_DIR, KAGGLE_FILE)
-
-def ensure_directories():
-    for layer in [BRONZE_DIR, SILVER_DIR, GOLD_DIR]:
-        os.makedirs(layer, exist_ok=True)
 
 def download_from_kaggle():
     print("[INFO] Downloading dataset from Kaggle...")
@@ -32,18 +18,26 @@ def download_from_kaggle():
     raise FileNotFoundError(f"{KAGGLE_FILE} not found in {path}")
 
 def main():
-    ensure_directories()
+    ROOT_PATH = Path(__file__).parent.parent
+    BRONZE_DIR = ROOT_PATH / "data" / "bronze"
 
-    if not os.path.exists(BRONZE_FILE):
-        print("[INFO] File not found in data/bronze. Starting ingestion...")
+    BRONZE_DIR.mkdir(parents=True, exist_ok=True)
+
+    BRONZE_FILE = BRONZE_DIR / KAGGLE_FILE
+
+    if not BRONZE_FILE.exists():
+        print(f"[INFO] File not found in {BRONZE_DIR}. Starting ingestion...")
         src_file = download_from_kaggle()
+
         shutil.copy(src_file, BRONZE_FILE)
+
         print(f"[INFO] Ingestion complete! File saved to {BRONZE_FILE}.")
     else:
         print("[INFO] File already exists in data. Skipping download.")
 
+    print("\n[INFO] Reading file...")
     df = pd.read_csv(BRONZE_FILE)
-    print(df.info())
+    print(df.head())
 
 if __name__ == "__main__":
     main()
